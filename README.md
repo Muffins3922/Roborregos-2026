@@ -38,3 +38,10 @@ The competition evaluates the performance of our autonomous robot across two mai
 * Juan Miguel Puentes de la Rosa
 
 <br>
+<br>
+
+## 🛠️ Our Progress
+
+
+....
+<br>
