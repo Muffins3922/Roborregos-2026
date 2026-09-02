@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="Banner-APG.png" alt="Banner de APG" width="100%">
+  <img src="Banner-APG.jpeg" alt="Banner de APG" width="100%">
 </div>
 
 <div align="center">
