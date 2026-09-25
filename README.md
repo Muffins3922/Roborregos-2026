@@ -245,8 +245,4 @@ void stop(){
 **Referencia:** Para este código nos inspiramos también en un proyecto propio con servomotores hecho previamente en la preparatoria (PrepaTec) por Abdiel Gongora.
 
 <br>
-=======
 
-....
-<br>
->>>>>>> 02deb9151b314e019b3b37245d055148589a0c5f
