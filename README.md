@@ -42,6 +42,7 @@ The competition evaluates the performance of our autonomous robot across two mai
 
 ## 🛠️ Our Progress
 
+<<<<<<< HEAD
 ### 🚗 Movimiento básico y pruebas (ESP32)
 
 Como primera prueba de control, implementamos el manejo de dirección y velocidad de un par de motores DC con encoders desde un ESP32. El sistema recibe comandos de texto por el Monitor Serie/Terminal para avanzar, retroceder, girar sobre su propio eje o detenerse, lo cual nos sirvió como validación inicial antes de integrar la lógica autónoma.
@@ -244,3 +245,8 @@ void stop(){
 **Referencia:** Para este código nos inspiramos también en un proyecto propio con servomotores hecho previamente en la preparatoria (PrepaTec) por Abdiel Gongora.
 
 <br>
+=======
+
+....
+<br>
+>>>>>>> 02deb9151b314e019b3b37245d055148589a0c5f
