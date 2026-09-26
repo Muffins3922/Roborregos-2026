@@ -8,17 +8,17 @@ int MotorIR = 5;//Pin del motor izquierdo reversa
 int MotorDA = 6;//Pin del motor derecho adelante
 int MotorDR = 7;//Pin del motor derecho adelante
 
-// ==================== Cierre automático de la garra por distancia ====================
-float distanciaPelota = -1; // TODO: aquí debe quedar tu lectura real de distancia
 
-// TODO: reemplaza esto por tu forma real de medir la distancia
-// (sensor ultrasónico en este mismo ESP32, dato recibido de la ESP32-CAM, etc.)
+float distanciaPelota = -1; // Inicializamos distancia
+
+//Funcion para definir la distancia de la pelota por definir
 float leerDistanciaPelota() {
   return -1;
 }
-// ==================== FIN ====================
 
-void setup() {
+
+void setup(){
+
   Serial.begin(9600);
 
   pinMode(MotorIA, OUTPUT);
@@ -37,7 +37,7 @@ void setup() {
 void loop() {
 
 
-  // ==================== Garra automática por distancia ====================
+  // Funcion donde si la distancia de la pelota esta a la necesaria, se cierra la garra o se acciona el servo
   distanciaPelota = leerDistanciaPelota();
 
   if (distanciaPelota <= 20) {
@@ -45,7 +45,7 @@ void loop() {
   } else {
     Servol.write(0);    // abrir garra
   }
-  // ==================== FIN ====================
+
 
 }
 
