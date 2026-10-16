@@ -42,7 +42,7 @@ The competition evaluates the performance of our autonomous robot across two mai
 
 ## 🛠️ Our Progress
 
-<<<<<<< HEAD
+
 ### 🚗 Movimiento básico y pruebas (ESP32)
 
 Como primera prueba de control, implementamos el manejo de dirección y velocidad de un par de motores DC con encoders desde un ESP32. El sistema recibe comandos de texto por el Monitor Serie/Terminal para avanzar, retroceder, girar sobre su propio eje o detenerse, lo cual nos sirvió como validación inicial antes de integrar la lógica autónoma.
@@ -246,3 +246,83 @@ void stop(){
 
 <br>
 
+### 🤖 Código final del robot: Pista A, Pista B y ESP32-CAM
+
+El robot usa dos placas: una **ESP32 WROOM-32 DevKit de 38 pines** que controla motores, sensores y garra, y una **ESP32-CAM (OV2640)** que procesa la imagen y le manda los resultados por UART. Hay un programa por pista para la ESP32 y uno para la cámara.
+
+| Archivo | Placa | Qué hace |
+|---|---|---|
+| `main_pistaa.cpp` | ESP32 DevKit | Laberinto 5x5: explora con BFS, va a la meta, regresa por el mismo camino (bonus 1), muestra los colores y el ArUco (bonus 2) |
+| `main_pistab.cpp` | ESP32 DevKit | Sección 1: agarrar la pelota · Sección 2: cruzar sin pisar líneas blancas · Sección 3: seguir los colores del piso |
+| `cam.cpp` | ESP32-CAM | Detecta la pelota naranja y calcula su distancia; lee marcadores ArUco 4x4_50 |
+| `camera_pins.h` | ESP32-CAM | Pines de la cámara del modelo AI-Thinker |
+| `aruco_dict_4x4_50.h` | ESP32-CAM | Tabla de los 50 marcadores ArUco |
+| `Generar_tabla_aruco.py` | Computadora | Genera la tabla de ArUco con OpenCV |
+
+#### 🔌 Componentes y pines
+
+| Componente | Conexión a la ESP32 |
+|---|---|
+| Driver TB6612FNG | Motor derecho PWMA 25, AIN1 26, AIN2 27 · Motor izquierdo PWMB 13, BIN1 32, BIN2 33 · STBY 14 |
+| 2 motores JGA25-371 200 RPM con encoder | Encoder derecho A 34 / B 35 · Encoder izquierdo A 36 / B 39 |
+| 3 ultrasónicos HC-SR04 | TRIG compartido 5 · ECHO frente 19, izquierda 18, derecha 23 (cada ECHO con divisor 1 kΩ / 2 kΩ) |
+| MPU6050, TCS34725 y OLED SSD1306 | I2C: SDA 21, SCL 22 (0x68, 0x29 y 0x3C) |
+| Servo de la garra | 4 |
+| ESP32-CAM | IO14 de la cam → GPIO16 (RX2) · GPIO17 (TX2) → IO13 de la cam · GND común |
+| LiPo 11.1 V 3S 2100 mAh + LM2596 | La batería alimenta el TB6612; el LM2596 baja a 5 V para la ESP32, la cámara, el servo y los ultrasónicos |
+
+La cámara manda por UART un número por línea con la distancia de la pelota en mm (`-1` si no la ve) y `A<id>` cuando reconoce un ArUco.
+
+#### 🧠 Síntesis de cada código
+
+**Pista A – `main_pistaa.cpp`**
+* **Movimiento:** los encoders cuentan pulsos con interrupciones y el robot avanza por celdas de 30 cm (`PULSOS_CELDA`), con corrección proporcional para ir derecho (`manejarRecto`).
+* **Giros:** de 90° integrando el giroscopio del MPU6050 (`girar`, `faceDirection`).
+* **Paredes:** los 3 ultrasónicos marcan las paredes de cada celda en `wallMap`.
+* **Navegación:** en cada celda se recalcula un **BFS**. Primero va a la celda sin visitar más cercana para explorar y luego toma el camino más corto a la meta. Al llegar se regresa por la ruta guardada (bonus 1).
+* **Obstáculos:** con el acelerómetro detecta rampas y escaleras para dar más fuerza al subir e ir lento al bajar; si se atora en un speedbump, empuja.
+* **Colores y ArUco:** el TCS34725 compara el color del piso con una tabla de referencias y la OLED muestra el color de cada celda y el ID del ArUco que manda la cámara.
+
+**Pista B – `main_pistab.cpp`**
+* **Sección 1:** con BFS rodea la caja del centro, entra por el lado abierto y la garra se cierra sola cuando la cámara ve la pelota a menos de `CERRAR_MM`. Si se le cae, la busca (`recuperarPelota`).
+* **Sección 2:** avanza en una fila leyendo el sensor de color en modo rápido; si ve una línea blanca se hace atrás y se cambia a la otra fila.
+* **Sección 3:** lee el color de cada casilla y gira según el reglamento (azul derecha, amarillo izquierda, naranja arriba, rosa abajo) hasta el verde.
+* **Checkpoints:** la etapa se guarda con `Preferences`; si el robot arranca sobre rojo, sigue en la sección guardada.
+
+**ESP32-CAM – `cam.cpp`**
+* Toma fotos de 160x120 en RGB565 y separa cada pixel en rojo, verde y azul.
+* **Pelota:** busca el recuadro naranja y calcula la distancia con semejanza de triángulos (`D = W × F / P`).
+* **ArUco:** busca la región oscura, lee los 4x4 bits y los compara con la tabla en las 4 rotaciones.
+* `Generar_tabla_aruco.py` crea `aruco_dict_4x4_50.h` con el diccionario oficial de OpenCV.
+
+📄 **Documentación completa:** `Documentacion_Codigos_Robot.docx` (código completo, explicación de cada función, datasheets y fuentes).
+
+**Referencias técnicas consultadas:**
+* [Repositorio bluetooth-maze-solving-robot-car (rahulraghavendrar)](https://github.com/rahulraghavendrar/bluetooth-maze-solving-robot-car): base de `solveMazeBFS`, `bfsSeccion1`, `faceDirection`, `drivePath` y `sensarParedes`.
+* [Curio Res – ArduinoTutorials](https://github.com/curiores/ArduinoTutorials) y [su video](https://youtu.be/dTGITLnYAY0): `readEncoder` y `setMotor`.
+* [SparkFun – Two-Wheeled Robot Precision Driving with Encoder Feedback](https://news.sparkfun.com/3276): corrección proporcional en `manejarRecto`.
+* [SparkFun – TB6612FNG Hookup Guide](https://learn.sparkfun.com/tutorials/tb6612fng-hookup-guide/all): tabla de verdad del driver.
+* [Random Nerd Tutorials – ESP32 con HC-SR04](https://randomnerdtutorials.com/esp32-hc-sr04-ultrasonic-arduino/) y [foro de Arduino – TRIG compartido](https://forum.arduino.cc/t/multiple-hc-sr04-with-as-few-pins-as-possible/475135): `leerDistanciaCM`.
+* [How To Mechatronics – Arduino y MPU6050](https://howtomechatronics.com/tutorials/arduino/arduino-and-mpu6050-accelerometer-and-gyroscope-tutorial/): `girar`, `calibrarGiroscopio` y `leerInclinacion`.
+* [Adafruit_TCS34725](https://github.com/adafruit/Adafruit_TCS34725) y [Adafruit_SSD1306](https://github.com/adafruit/Adafruit_SSD1306): `leerColor`, `hayLineaBlanca` y `mostrarTexto`.
+* [ESP32Servo](https://github.com/madhephaestus/ESP32Servo): servo de la garra.
+* Random Nerd Tutorials: [I2C Scanner](https://randomnerdtutorials.com/esp32-i2c-scanner-arduino/), [UART](https://randomnerdtutorials.com/esp32-uart-communication-serial-arduino) y [Preferences](https://randomnerdtutorials.com/esp32-save-data-permanently-preferences/).
+* [Espressif – CameraWebServer](https://github.com/espressif/arduino-esp32/tree/master/libraries/ESP32/examples/Camera/CameraWebServer) y [esp32-camera](https://github.com/espressif/esp32-camera): configuración de la cámara y `camera_pins.h`.
+* [Microsoft Learn – Working with 16-bit RGB](https://learn.microsoft.com/en-us/windows/win32/directshow/working-with-16-bit-rgb): formato RGB565.
+* [PyImageSearch – Distancia de la cámara a un objeto](https://pyimagesearch.com/2015/01/19/find-distance-camera-objectmarker-using-python-opencv/): `calcularDistanciaMM`.
+* [OpenCV – Detection of ArUco Markers](https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html): estructura del marcador y diccionario 4x4_50.
+* [Espressif – Migración de 2.x a 3.0](https://docs.espressif.com/projects/arduino-esp32/en/latest/migration_guides/2.x_to_3.0.html): cambio de `analogWriteFrequency` en el core 3.
+
+**Datasheets:**
+* [ESP32 Series](https://documentation.espressif.com/esp32_datasheet_en.pdf) · [ESP32-WROOM-32](https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf) · [ESP32-CAM](https://github.com/raphaelbs/esp32-cam-ai-thinker/blob/master/assets/ESP32-CAM_Product_Specification.pdf) · [OV2640](https://files.waveshare.com/wiki/common/OV2640DS_en.pdf)
+* [TB6612FNG](https://cdn.sparkfun.com/datasheets/Robotics/TB6612FNG.pdf) · [JGA25-371 (hoja del vendedor)](https://docs.cirkitdesigner.com/component/a274523d-ec09-4b64-8cac-8c40a853f967/jga25-371dc-motor-with-encoder) · [LM2596](https://www.ti.com/lit/ds/symlink/lm2596.pdf)
+* [HC-SR04](https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf) · [TCS34725](https://cdn-shop.adafruit.com/datasheets/TCS34725.pdf) · [MPU6050](https://alliance.seas.upenn.edu/~medesign/wiki/uploads/Guides/MPU6050_datasheet.pdf) · [SSD1306](https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf) · [SG90](https://bit.nkust.edu.tw/~csshieh/teach/111A/mc/datasheet/SG90.pdf)
+
+**Uso de IA:** consulta técnica a Claude (IA de Anthropic). Las ideas de implementación fueron del equipo. La IA nos ayudó en:
+* Corregir errores cuando el código no compilaba o no funcionaba.
+* Juntar funciones de distintas fuentes.
+* Implementar las funciones que no tienen fuente externa.
+* Hacer las fórmulas de medición del avance (`PULSOS_CELDA`, `cmAPulsos` y `avance`).
+* Entender el código de las fuentes.
+
+<br>
